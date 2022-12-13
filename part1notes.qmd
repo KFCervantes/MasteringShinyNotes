@@ -321,3 +321,48 @@ range <- reactive(range(var(), na.rm = TRUE))
 ```
 
 This has issues since `range` and `var` are already function names in R. This can cause some ambiguity and different names should be used.
+
+# Chapter 4
+Now for this, there was a larger shiny application. Due to some of the Python documentation not being currently available, I decided to do this in R.
+
+To set this up, some tidyverse functions will be used.
+
+```{r}
+library(tidyverse)
+```
+
+
+I first need to download the data. I will start by making a directory.
+
+```{r}
+data_folder <- "neiss"
+dir.create(data_folder)
+```
+
+I now need the url to download the files. **This is different than what is in the book.** For some reason the url has changed since the book was published. The following chunk currently works.
+
+
+```{r}
+url <- "https://github.com/hadley/mastering-shiny/blob/main/neiss/"
+
+files <- c(
+  "injuries.tsv.gz",
+  "population.tsv",
+  "products.tsv"
+)
+
+files %>%
+  walk(
+    ~download.file(
+      url = str_c(url, .x, "?raw=true"),
+      destfile = str_c(data_folder, .x, sep = "/"),
+      quiet = TRUE
+    )
+  )
+```
+
+Now unfortunately, the compressed file did not correctly download.
+```{r}
+read_tsv("neiss/injuries.tsv.gz")
+```
+
