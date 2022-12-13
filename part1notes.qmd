@@ -1,0 +1,323 @@
+---
+title: "Mastering Shiny Notes: Part 1"
+author: "Kaleb Cervantes"
+date: December 2, 2022
+format: gfm
+execute:
+  eval: false
+---
+
+I've already read this, but I thought going over the exercises would be helpful.
+
+# Chapter 1
+## Question 1
+For this, I needed to create an app that greets the user by name.
+
+```{python}
+from shiny import *
+
+app_ui = ui.page_fluid(
+  ui.input_text("name", "What's your name?"),
+  ui.output_text("txt")
+)
+
+def server(input, output, session):
+  @output
+  @render_text
+  def txt():
+    return f"Hello {input.name()}"
+
+app = App(app_ui, server)
+```
+
+## Question 4
+Questions 2 -- 4 all were related to slider inputs. I decided to include the most complex one which wanted functions of both inputs.
+
+
+```{python}
+from shiny import *
+
+app_ui = ui.page_fluid(
+  ui.input_slider("x", "If x is", min = 1, max = 50, value = 30),
+  ui.input_slider("y", "and y is", min = 1, max = 50, value = 5),
+  "then, (x * y) is", ui.output_text("product"),
+  "and, (x * y) + 5 is", ui.output_text("product_plus5"),
+  "and (x * y) + 10 is", ui.output_text("product_plus10")
+)
+
+def server(input, output, session):
+  @reactive.Calc
+  def xy():
+    return input.x() * input.y()
+  
+  @output
+  @render_text
+  def product():
+    return f"{xy()}"
+
+  @output
+  @render_text
+  def product_plus5():
+    return f"{xy() + 5}"
+
+  @output
+  @render_text
+  def product_plus10():
+    return f"{xy() + 10}"
+        
+app = App(app_ui, server)
+```
+
+## Question 5
+I was not able to get some of the datasets to work in Python. As such, I decided to do this in R.
+
+```{r}
+library(shiny)
+library(ggplot2)
+
+datasets <- c("economics", "faithfuld", "seals")
+ui <- fluidPage(
+  selectInput("dataset", "Dataset", choices = datasets),
+  verbatimTextOutput("summary"),
+  plotOutput("plot")
+)
+
+server <- function(input, output, session) {
+  df <- reactive({
+    get(input$dataset, "package:ggplot2")
+  })
+  output$summary <- renderPrint({
+    summary(df())
+  })
+  output$plot <- renderPlot({
+    plot(df())
+  }, res = 96)
+}
+
+shinyApp(ui, server)
+```
+
+# Chapter 2
+## Inputs
+### Question 1
+In order to fill a text box with a placeholder, we can use the `placeholder` parameter. An example of this is this modified `app_ui` object for Chapter 1 Question 1.
+
+```{python}
+app_ui = ui.page_fluid(
+  ui.input_text("name", "What's your name?", placeholder = "Your Name"),
+  ui.output_text("txt")
+)
+```
+
+### Question 2
+We needed to create an application that contained an input slider.
+
+```{python}
+from shiny import *
+from datetime import date
+
+app_ui = ui.page_fluid(
+  ui.input_slider(
+    "date",
+    "When should we deliver?",
+    min = date(2020, 9, 16),
+    max = date(2020, 9, 23),
+    value = date(2020, 9, 17)
+  )
+)
+
+def server(input, output, session):
+  pass
+
+app = App(app_ui, server)
+```
+
+### Question 3
+For this, we needed to create an input slider that ranges from 0 to 100 in intervals of 5. It should also be animated.
+
+```{python}
+from shiny import *
+
+app_ui = ui.page_fluid(
+  ui.input_slider(
+    "x",
+    label = "Value",
+    min = 0,
+    max = 100,
+    value = 0,
+    step = 5,
+    animate = True
+  )
+)
+
+def server(input, output, session):
+  pass
+
+app = App(app_ui, server)
+```
+
+### Question 4
+For this, we needed to know how to make subheadings. In Python, this can be done by passing a dictionary of dictionaries into the `choices` parameter. An example is given below:
+
+```{python}
+from shiny import *
+
+app_ui = ui.page_fluid(
+  ui.input_select(
+    "state",
+    "Choose a state:",
+    {
+      "East Coast": {"NY": "NY", "NJ": "NJ", "CT": "CT"},
+      "West Coast": {"WA": "WA", "OR": "OR", "CA": "CA"},
+      "Midwest": {"MN": "MN", "WI": "WI", "IA": "IA"},
+    },
+  ),
+    ui.output_text("value"),
+)
+
+def server(input, output, session):
+  @output
+  @render.text
+  def value():
+    return f"You choose: {input.state()}"
+
+
+app = App(app_ui, server)
+```
+
+## Outputs
+### Question 1
+In general, normal text gets output with `textOutput`. an example of this is
+
+* `renderText("Good morning!)`
+
+Console output should be output with `verbatimTextOutput`. Examples of this include:
+
+* `renderPrint(summary(mtcars))`
+
+* `renderPrint(t.test(1:5, 2:6))`
+
+* `renderText(str(lm(mpg ~ wt, data = mtcars)))`
+
+Now this was done using the R syntax, however the same principal applies in Python.
+
+### Question 2
+For this, I tried to recreate a basic scatter plot. In R, plots can have an "alt" text to help with visually impaired. Unfortunately, Python Shiny has not added this feature yet. The app is below:
+
+```{python}
+from shiny import *
+import matplotlib.pyplot as plt
+
+app_ui = ui.page_fluid(
+  ui.output_plot(
+    "plot",
+    height = "300px",
+    width = "700px"
+  )
+)
+
+def server(input, output, session):
+  @output
+  @render.plot
+  def plot():
+    
+    # list of numbers from 1 to 5
+    x = [range(1, 6)]
+    
+    fig, ax = plt.subplots()
+    ax.scatter(x, x)
+    return fig
+
+app = App(app_ui, server)
+```
+
+### Question 3
+This question did not work in Python. I had to do it in R. We had to modify the call to `renderDataTable` so that searching, filtering, and ordering is disabled.
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  dataTableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- list(
+    pageLength = 5,
+    searching = FALSE,
+    ordering = FALSE
+  ) |>
+    renderDataTable(mtcars, options = _)
+}
+
+shinyApp(ui, server)
+```
+
+### Question 4
+This was to modify the previous application to use Reactable.
+
+```{r}
+library(shiny)
+library(reactable)
+
+ui <- fluidPage(
+  reactableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- reactable(mtcars) |>
+    renderReactable()
+}
+
+shinyApp(ui, server)
+```
+
+# Chapter 3
+## Question 1
+For this, we are given a `ui`
+
+```{r}
+ui <- fluidPage(
+  textInput("name", "What's your name?"),
+  textOutput("greeting")
+)
+```
+
+Now the following functions are analyzed
+
+```{r}
+server1 <- function(input, output, server) {
+  input$greeting <- renderText(paste0("Hello ", name))
+}
+
+server2 <- function(input, output, server) {
+  greeting <- paste0("Hello ", input$name)
+  output$greeting <- renderText(greeting)
+}
+
+server3 <- function(input, output, server) {
+  output$greting <- paste0("Hello", input$name)
+}
+```
+
+### `server1`
+`input$greeting` needs to be replaced with `output$greeting`. Also `name` is an attribute of `input` and needs to be specified as such.
+
+### `server2`
+In order to store the value into `greeting` like that, it needs to either be made into a reactive or piped into `renderText`.
+
+### `server3`
+The output from `paste0` needs to be piped into `renderText`
+
+## Question 2
+This involved drawing reactive graphs. I am unsure how to do that in this format so I skipped it for now.
+
+## Question 3
+We are given the following code.
+
+```{r}
+var <- reactive(df[[input$var]])
+range <- reactive(range(var(), na.rm = TRUE))
+```
+
+This has issues since `range` and `var` are already function names in R. This can cause some ambiguity and different names should be used.
